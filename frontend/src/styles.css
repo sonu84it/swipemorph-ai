@@ -1,0 +1,77 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  background: #070914;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  min-width: 320px;
+  margin: 0;
+  background:
+    radial-gradient(circle at 16% 12%, rgba(71, 246, 197, 0.14), transparent 28rem),
+    radial-gradient(circle at 80% 6%, rgba(251, 113, 133, 0.12), transparent 24rem),
+    linear-gradient(135deg, #070914 0%, #0b1020 46%, #11101e 100%);
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@layer components {
+  .glass-panel {
+    @apply rounded-[32px] border border-line bg-panel shadow-card backdrop-blur-2xl;
+  }
+
+  .section-title {
+    @apply text-sm font-semibold uppercase tracking-[0.24em] text-white/[0.54];
+  }
+
+  .category-card {
+    @apply flex min-h-[168px] flex-col rounded-[26px] border border-white/10 bg-white/[0.04] p-4 text-left transition hover:border-neon/40 hover:bg-white/[0.07];
+  }
+
+  .category-card-active {
+    @apply border-neon/70 bg-neon/10 shadow-glow;
+  }
+
+  .scale-card {
+    @apply flex min-h-[86px] flex-col rounded-[22px] border border-white/10 bg-white/[0.04] p-4 text-left transition hover:border-neon/40 hover:bg-white/[0.07];
+  }
+
+  .scale-card-active {
+    @apply border-neon/70 bg-neon/10 shadow-glow;
+  }
+
+  .primary-button {
+    @apply flex min-h-14 w-full items-center justify-center gap-3 rounded-[22px] bg-gradient-to-r from-neon via-violet to-rose px-5 text-base font-bold text-ink shadow-glow transition disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .secondary-button,
+  .icon-text-button {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-[18px] border border-white/[0.12] bg-white/[0.06] px-4 text-sm font-semibold text-white transition hover:border-neon/40 hover:text-neon;
+  }
+
+  .icon-button {
+    @apply inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] border border-white/[0.12] bg-white/[0.06] text-white transition hover:border-neon/40 hover:text-neon;
+  }
+
+  .metric {
+    @apply rounded-[20px] border border-white/10 bg-white/[0.04] p-3;
+  }
+
+  .metric span {
+    @apply block text-xs text-white/45;
+  }
+
+  .metric strong {
+    @apply mt-1 block text-sm font-semibold text-white;
+  }
+}
