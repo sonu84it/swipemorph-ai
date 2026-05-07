@@ -50,11 +50,26 @@ class VertexImageService:
         return types.Part.from_bytes(data=data, mime_type=mime_type)
 
     def _build_edit_prompt(self, category: Category, scale: VariationScale, variation_index: int) -> str:
+        creative_directions = [
+            "premium studio portrait lighting with refined realistic detail",
+            "editorial magazine composition with a distinct color palette",
+            "cinematic environmental lighting with richer background context",
+            "luxury lifestyle styling with a more polished mood",
+            "modern social profile aesthetic with clean depth and contrast",
+            "high-end campaign photography with expressive styling",
+            "fresh seasonal look with changed mood, color, and presentation",
+            "bold concept shoot with a clearly different visual treatment",
+            "minimal premium composition with elegant contrast",
+            "aspirational hero image with cinematic polish",
+        ]
+        direction = creative_directions[(variation_index - 1) % len(creative_directions)]
         return f"""
 Analyze the uploaded image first. Identify the subject, whether it is a person, object, food, location, or lifestyle
 scene, plus the background, lighting, colors, outfit, composition, mood, and key objects.
 
-Then generate exactly one edited image variation #{variation_index}.
+Then generate exactly one edited image variation #{variation_index}. Treat this as an independent variation from the
+original uploaded reference image, not a continuation of any previous generated output.
+Creative direction for this variation: {direction}.
 
 Transformation intent:
 {CATEGORY_PROMPTS[category]}
@@ -64,8 +79,11 @@ Variation scale:
 
 Important output requirements:
 - Return an edited image, not only text.
-- Preserve the recognizable main subject where applicable.
+- Preserve the recognizable main subject where applicable, especially face identity, facial structure, age, expression,
+  body structure, and core likeness.
 - Keep the result photorealistic and premium.
+- Make this result visually distinct from previous likely variations by changing styling, lighting, color palette, pose energy,
+  composition, or environment according to the selected category and scale.
 - Avoid text, labels, watermarks, distorted hands, extra limbs, plastic skin, or unrealistic anatomy.
 - Use a 4:5 portrait composition when possible.
 """

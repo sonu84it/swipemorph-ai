@@ -50,3 +50,26 @@ export async function generateNextVariation(payload) {
     body: JSON.stringify(payload)
   });
 }
+
+export async function downloadVariationsZip(images) {
+  const response = await fetch(`${API_BASE_URL}/api/download-variations`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ images })
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({ detail: "Download failed" }));
+    throw new Error(payload.detail || "Download failed");
+  }
+
+  return response.blob();
+}
+
+export async function prepareDownloadZip(images) {
+  return request(`${API_BASE_URL}/api/prepare-download`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ images })
+  });
+}

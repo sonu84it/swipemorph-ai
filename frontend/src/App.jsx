@@ -1,10 +1,14 @@
-import { Sparkles } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Coins, Sparkles } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
 import CategorySelector from "./components/CategorySelector.jsx";
 import GenerationScreen from "./components/GenerationScreen.jsx";
 import ScaleSelector from "./components/ScaleSelector.jsx";
 import UploadCard from "./components/UploadCard.jsx";
 import { generateFirstVariation, uploadImage } from "./lib/api.js";
+
+const INITIAL_CREDITS = 1000;
+const GENERATION_COST = 50;
+const CREDIT_SYMBOL = "MORPH";
 
 export default function App() {
   const [file, setFile] = useState(null);
@@ -15,12 +19,25 @@ export default function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState("");
+  const [coinCredits, setCoinCredits] = useState(INITIAL_CREDITS);
+
+  const spendCredits = useCallback((amount) => {
+    setCoinCredits((value) => Math.max(0, value - amount));
+  }, []);
+
+  const rewardCredits = useCallback((amount) => {
+    setCoinCredits((value) => value + amount);
+  }, []);
 
   const previewUrl = useMemo(() => (file ? URL.createObjectURL(file) : ""), [file]);
 
   async function handleGenerate() {
     if (!file) {
       setError("Choose an image first.");
+      return;
+    }
+    if (coinCredits < GENERATION_COST) {
+      setError(`You need ${GENERATION_COST} ${CREDIT_SYMBOL} to generate an image.`);
       return;
     }
 
@@ -43,6 +60,7 @@ export default function App() {
         variationScale
       });
       setProgress(100);
+      setCoinCredits((value) => Math.max(0, value - GENERATION_COST));
       setFirstImageUrl(result.generatedImageUrl);
     } catch (err) {
       setError(err.message || "Generation failed.");
@@ -59,6 +77,11 @@ export default function App() {
         initialImageUrl={firstImageUrl}
         selectedCategory={selectedCategory}
         variationScale={variationScale}
+        coinCredits={coinCredits}
+        generationCost={GENERATION_COST}
+        creditSymbol={CREDIT_SYMBOL}
+        onSpendCredits={spendCredits}
+        onRewardCredits={rewardCredits}
         onReset={() => {
           setFirstImageUrl("");
           setUploadedImageUrl("");
@@ -72,6 +95,10 @@ export default function App() {
 
   return (
     <main className="min-h-screen overflow-hidden px-4 py-6 text-white sm:px-6 lg:px-8">
+      <div className="fixed right-4 top-4 z-30 inline-flex items-center gap-2 rounded-full border border-white/12 bg-ink/78 px-3 py-2 text-sm font-bold text-white shadow-glow backdrop-blur">
+        <Coins size={16} className="text-neon" />
+        {coinCredits} {CREDIT_SYMBOL}
+      </div>
       <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[0.92fr_1.08fr] lg:items-start">
         <section className="pt-4 lg:sticky lg:top-6">
           <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-neon/25 bg-neon/10 px-3 py-2 text-xs font-medium text-neon shadow-glow">
@@ -113,7 +140,7 @@ export default function App() {
               onClick={handleGenerate}
             >
               <Sparkles size={20} />
-              {isGenerating ? "Generating..." : "Generate"}
+              {isGenerating ? "Generating..." : `Generate · ${GENERATION_COST} ${CREDIT_SYMBOL}`}
             </button>
 
             {isGenerating ? (
