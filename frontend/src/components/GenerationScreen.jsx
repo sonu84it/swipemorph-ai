@@ -51,7 +51,6 @@ export default function GenerationScreen({
 }) {
   const [variations, setVariations] = useState([{ index: 1, url: initialImageUrl }]);
   const [currentPosition, setCurrentPosition] = useState(0);
-  const [nextVariation, setNextVariation] = useState(null);
   const [isGeneratingNext, setIsGeneratingNext] = useState(false);
   const [isSwiping, setIsSwiping] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
@@ -65,6 +64,7 @@ export default function GenerationScreen({
   const [tapBursts, setTapBursts] = useState([]);
   const [cardKey, setCardKey] = useState(1);
   const [error, setError] = useState("");
+  const [autoSwipeSourcePosition, setAutoSwipeSourcePosition] = useState(null);
   const isRequestingRef = useRef(false);
   const limitGalleryOpenedRef = useRef(false);
   const controls = useAnimationControls();
@@ -72,19 +72,18 @@ export default function GenerationScreen({
   const currentVariation = variations[currentPosition] || variations[0];
   const currentImageUrl = currentVariation.url;
   const variationIndex = currentVariation.index;
-  const isAtLatest = currentPosition === variations.length - 1;
   const hasPrevious = currentPosition > 0;
-  const hasReadyNext = currentPosition < variations.length - 1 || Boolean(nextVariation);
-  const generatedCount = variations.length + (nextVariation ? 1 : 0);
+  const hasReadyNext = currentPosition < variations.length - 1;
+  const generatedCount = variations.length;
   const reachedLimit = generatedCount >= MAX_VARIATIONS;
   const hasGenerationCredits = coinCredits >= generationCost;
   const autoSwipeEnabled = autoSwipeDelayMs > 0;
-  const readyNext = Boolean(nextVariation) && !isGeneratingNext;
-  const galleryItems = nextVariation ? [...variations, nextVariation] : variations;
+  const readyNext = hasReadyNext && !isGeneratingNext;
+  const galleryItems = variations;
   const selectedGalleryItems = galleryItems.filter((item) => selectedDownloadUrls.includes(item.url));
-  const statusLabel = reachedLimit && !nextVariation
+  const statusLabel = reachedLimit
     ? "Session complete"
-    : !hasGenerationCredits && !nextVariation
+    : !hasGenerationCredits && !hasReadyNext
       ? `Need ${generationCost} ${creditSymbol} to generate`
     : isSwiping
       ? "Showing next variation"
@@ -118,26 +117,19 @@ export default function GenerationScreen({
   const revealNext = useCallback(
     async (direction = 1) => {
       if (currentPosition < variations.length - 1) {
+        setAutoSwipeSourcePosition(null);
         setIsSwiping(true);
         await transitionToPosition(currentPosition + 1, direction);
         setIsSwiping(false);
         return;
       }
 
-      if (!nextVariation) return;
-
-      const appendedPosition = variations.length;
-      setOverlayMessage("");
-      const readyVariation = nextVariation;
-      setIsSwiping(true);
-      setVariations((items) => [...items, readyVariation]);
-      setNextVariation(null);
-      setGenerationProgress(0);
-      await transitionToPosition(appendedPosition, direction);
-      setOverlayMessage("");
-      setIsSwiping(false);
+      if (isGeneratingNext) {
+        setOverlayMessage(`Creating your next variation... ${generationProgress}%`);
+        window.setTimeout(() => setOverlayMessage(""), 1800);
+      }
     },
-    [currentPosition, nextVariation, transitionToPosition, variations.length]
+    [currentPosition, generationProgress, isGeneratingNext, transitionToPosition, variations.length]
   );
 
   const revealPrevious = useCallback(async () => {
@@ -149,9 +141,11 @@ export default function GenerationScreen({
   }, [currentPosition, hasPrevious, transitionToPosition]);
 
   const requestNext = useCallback(async () => {
-    if (isRequestingRef.current || nextVariation || reachedLimit || isSwiping) return;
+    if (isRequestingRef.current || reachedLimit) return;
+    if (currentPosition < variations.length - 1) return;
     if (coinCredits < generationCost) return;
     isRequestingRef.current = true;
+    setAutoSwipeSourcePosition(currentPosition);
     setIsGeneratingNext(true);
     setGenerationProgress(5);
     setError("");
@@ -169,9 +163,17 @@ export default function GenerationScreen({
       setGenerationProgress(100);
       await preloadImage(result.generatedImageUrl);
       onSpendCredits(generationCost);
-      setNextVariation({
-        index: result.variationIndex,
-        url: result.generatedImageUrl
+      setVariations((items) => {
+        if (items.some((item) => item.index === result.variationIndex) || items.length >= MAX_VARIATIONS) {
+          return items;
+        }
+        return [
+          ...items,
+          {
+            index: result.variationIndex,
+            url: result.generatedImageUrl
+          }
+        ];
       });
     } catch (err) {
       setError(err.message || "Could not generate the next variation.");
@@ -179,7 +181,7 @@ export default function GenerationScreen({
       isRequestingRef.current = false;
       setIsGeneratingNext(false);
     }
-  }, [coinCredits, generationCost, isSwiping, nextVariation, onSpendCredits, originalImageUrl, reachedLimit, selectedCategory, variationScale, variations]);
+  }, [coinCredits, currentPosition, generationCost, onSpendCredits, originalImageUrl, reachedLimit, selectedCategory, variationScale, variations]);
 
   useEffect(() => {
     requestNext();
@@ -194,18 +196,18 @@ export default function GenerationScreen({
   }, [isGeneratingNext]);
 
   useEffect(() => {
-    if (!nextVariation || !autoSwipeEnabled || !isAtLatest) return undefined;
+    if (!hasReadyNext || !autoSwipeEnabled || isSwiping || currentPosition !== autoSwipeSourcePosition) return undefined;
     const timer = window.setTimeout(() => {
       revealNext(1);
     }, autoSwipeDelayMs);
     return () => window.clearTimeout(timer);
-  }, [autoSwipeDelayMs, autoSwipeEnabled, isAtLatest, nextVariation, revealNext]);
+  }, [autoSwipeDelayMs, autoSwipeEnabled, autoSwipeSourcePosition, currentPosition, hasReadyNext, isSwiping, revealNext]);
 
   useEffect(() => {
-    if (!nextVariation && !isGeneratingNext && !isRequestingRef.current && !reachedLimit && !isSwiping) {
+    if (!isGeneratingNext && !isRequestingRef.current && !reachedLimit) {
       requestNext();
     }
-  }, [isGeneratingNext, isSwiping, nextVariation, reachedLimit, requestNext, variations.length]);
+  }, [isGeneratingNext, reachedLimit, requestNext, variations.length]);
 
   useEffect(() => {
     if (reachedLimit && !limitGalleryOpenedRef.current) {
@@ -316,10 +318,6 @@ export default function GenerationScreen({
   }
 
   function selectGalleryItem(position) {
-    if (position === variations.length && nextVariation) {
-      setVariations((items) => [...items, nextVariation]);
-      setNextVariation(null);
-    }
     setCurrentPosition(position);
     setCardKey((value) => value + 1);
     controls.set({ x: 0, rotate: 0, opacity: 1 });
@@ -490,7 +488,7 @@ export default function GenerationScreen({
                   </p>
                   <p className="mt-1 text-xs text-white/48">
                     {autoSwipeEnabled
-                      ? nextVariation && isAtLatest
+                      ? hasReadyNext && currentPosition === autoSwipeSourcePosition
                         ? `Auto-swipe in ${autoSwipeDelayMs / 1000} seconds`
                         : hasGenerationCredits
                           ? "Auto-swipe is active"
@@ -590,9 +588,6 @@ export default function GenerationScreen({
                   <div className="flex items-center justify-between gap-2 p-3">
                     <span className="text-sm font-semibold text-white">#{item.index}</span>
                     <div className="flex items-center gap-2">
-                      {position === variations.length && nextVariation ? (
-                        <span className="text-xs text-neon">Ready</span>
-                      ) : null}
                       <button
                         type="button"
                         className="inline-flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.04] px-2 py-1 text-xs font-semibold text-white/70 transition hover:border-neon/40 hover:text-neon"
