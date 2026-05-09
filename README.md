@@ -2,6 +2,16 @@
 
 SwipeMorph AI is a full-stack MVP for AI image variations. Users upload an image, choose a transformation intent and variation scale, generate the first result, and then the app continuously prepares the next variation in the background. When the next result is ready, the card auto-swipes to the new image.
 
+## Product Preview
+
+### Home
+
+![SwipeMorph AI home screen](docs/images/homepage.png)
+
+### Variation Studio
+
+![SwipeMorph AI variation studio](docs/images/app-demo.png)
+
 ## Stack
 
 - Frontend: React, Vite, Tailwind CSS, Framer Motion
@@ -14,6 +24,7 @@ SwipeMorph AI is a full-stack MVP for AI image variations. Users upload an image
 ```text
 frontend/          React + Vite app
 backend/           FastAPI app, Dockerfile, requirements
+docs/images/       Product screenshots for README and project overview
 .env.example       Shared environment variable reference
 ```
 
